@@ -205,10 +205,11 @@ const DB = {
           const { fs, db } = await fb(), g = async n => (await fs.getDocs(fs.collection(db, n))).docs.map(x => ({ ...x.data(), id: x.id }));
           const [aj, sedes, habs] = await Promise.all([fs.getDoc(fs.doc(db, "ajustes", "general")).then(x => x.exists() ? x.data() : {}), g("sedes"), g("habitaciones")]);
           CAT = { aj: { ...D.ajustes, ...aj }, sedes: (sedes.length ? sedes : D.sedes).sort((a, b) => (a.orden ?? 0) - (b.orden ?? 0)), habs: habs.length ? habs : D.habitaciones };
-          sessionStorage.setItem("kh_cat", JSON.stringify({ v: 2, t: Date.now(), d: CAT }));
+          try { sessionStorage.setItem("kh_cat", JSON.stringify({ v: 2, t: Date.now(), d: CAT })); } catch (e) {}
         } catch (e) { console.warn("Firebase:", e.message); CAT = { aj: D.ajustes, sedes: D.sedes, habs: D.habitaciones }; }
       }
     }
+    aplicarMarca(CAT.aj);
     CAT.sedes = CAT.sedes.filter(s => s.activa !== false); CAT.habs = CAT.habs.filter(h => h.activa !== false);
     return CAT;
   },
@@ -223,6 +224,10 @@ const DB = {
       if (!l.length) { try { const { fs, db } = await fb(); if ((await fs.getDocs(fs.query(fs.collection(db, "productos"), fs.limit(1)))).empty) l = window.KH_DATOS.productos.filter(deTipo); } catch (e) {} }   // tienda aún vacía en Firebase: ejemplos
     }
     return PRODS[sede] = l.filter(p => p.activo !== false).sort((a, b) => String(a.cat).localeCompare(b.cat) || String(a.n).localeCompare(b.n));
+  },
+  async galeria(hab) {   // fotos extra de una habitación (se cargan solo al abrir la galería)
+    try { if (DEMO) return ((LDB.get().galeria || {})[hab] || {}).fotos || [];
+      const { fs, db } = await fb(), x = await fs.getDoc(fs.doc(db, "galeria", hab)); return x.exists() ? x.data().fotos || [] : []; } catch (e) { return []; }
   },
   async ocupacion(desde, hasta) {   // noches ocupadas entre [desde, hasta)
     if (DEMO) return arr(LDB.get().ocupacion).filter(o => o.fecha >= desde && o.fecha < hasta);
@@ -282,22 +287,33 @@ function cotizar(h, llegada, salida, aj) {
 }
 
 /* ---------------- Estructura: cabecera y pie ---------------- */
-const LOGO = `<svg class="logo-m" viewBox="0 0 40 40" aria-hidden="true"><circle cx="20" cy="20" r="19" fill="var(--pri)"/><path d="M25 9a12 12 0 1 0 7 18A10 10 0 0 1 25 9z" fill="var(--acc)"/></svg>`;
+const LOGO_SVG = `<svg class="logo-m" viewBox="0 0 40 40" aria-hidden="true"><circle cx="20" cy="20" r="19" fill="var(--pri)"/><path d="M25 9a12 12 0 1 0 7 18A10 10 0 0 1 25 9z" fill="var(--acc)"/></svg>`;
+const LOGO = () => CAT && CAT.aj && CAT.aj.logo ? `<img class="logo-m logo-img" src="${esc(CAT.aj.logo)}" alt="">` : LOGO_SVG;
+const oscurecer = (hex, k) => { const n = parseInt(String(hex).replace("#", ""), 16); if (isNaN(n)) return hex; return "#" + [n >> 16, (n >> 8) & 255, n & 255].map(v => Math.round(v * (1 - k)).toString(16).padStart(2, "0")).join(""); };
+function aplicarMarca(aj) {   // logo, colores e idioma que se eligen en el panel → Ajustes → Marca y web
+  const r = document.documentElement.style;
+  if (aj.colorPri) { r.setProperty("--pri", aj.colorPri); r.setProperty("--pri2", oscurecer(aj.colorPri, .28)); }
+  if (aj.colorAcc) r.setProperty("--acc", aj.colorAcc);
+  if (aj.logo) { const l = $('link[rel="icon"]') || document.head.appendChild(Object.assign(document.createElement("link"), { rel: "icon" })); l.type = "image/png"; l.href = aj.logo; }
+  if (aj.ingles === false) LANG = "es";
+}
+const REDES = { facebook: '<path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/>', instagram: '<rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="4"/><path d="M17.5 6.5h.01"/>', tiktok: '<path d="M16 3c.5 2.5 2 4 5 4v3.5c-2 0-3.7-.6-5-1.6V16a6 6 0 1 1-6-6v3.6a2.5 2.5 0 1 0 2.5 2.4V3z"/>' };
 function layout(cat, opts = {}) {
   const aj = cat.aj, pg = document.body.dataset.page;
   const nav = [["index", "./", t("inicio")], ["habitaciones", "habitaciones", t("habitaciones")], ["tienda", "tienda", t("tienda")], ["mi-reserva", "mi-reserva", t("miReserva")]];
   if (!opts.sinCabecera) document.body.insertAdjacentHTML("afterbegin", `<a class="skip" href="#main">${LANG === "en" ? "Skip to content" : "Ir al contenido"}</a>
     <header class="top"><div class="wrap top-in">
-      <a class="brand" href="./">${LOGO}<span><b>${esc(aj.nombre)}</b><small>${esc(L(aj, "slogan"))}</small></span></a>
+      <a class="brand" href="./">${LOGO()}<span><b>${esc(aj.nombre)}</b><small>${esc(L(aj, "slogan"))}</small></span></a>
       <nav class="nav" id="nav" aria-label="Principal">${nav.map(([k, h, n]) => `<a href="${h}" ${pg === k ? 'aria-current="page"' : ""}>${n}</a>`).join("")}</nav>
-      <div class="top-r"><button class="lang" id="langBtn" aria-label="Language">${ico("globe")}<span>${LANG === "es" ? "EN" : "ES"}</span></button>
+      <div class="top-r"><button class="lang" id="langBtn" ${aj.ingles === false ? "hidden" : ""} aria-label="Language">${ico("globe")}<span>${LANG === "es" ? "EN" : "ES"}</span></button>
         <a class="btn btn-pri btn-sm top-cta" href="reservar">${t("reservar")}</a>
         <button class="menu-b" id="menuB" aria-label="Menú" aria-expanded="false" aria-controls="nav">${ico("menu")}</button></div>
     </div></header>`);
   if (!opts.sinPie) document.body.insertAdjacentHTML("beforeend", `<footer class="foot"><div class="wrap foot-g">
-      <div><a class="brand" href="./">${LOGO}<span><b>${esc(aj.nombre)}</b><small>${esc(L(aj, "slogan"))}</small></span></a>
+      <div><a class="brand" href="./">${LOGO()}<span><b>${esc(aj.nombre)}</b><small>${esc(L(aj, "slogan"))}</small></span></a>
         <p class="foot-p">${LANG === "en" ? "Hotels in" : "Hospedajes en"} ${cat.sedes.map(s => esc(s.ciudad)).join(" · ")}</p>
-        <p class="foot-p"><a href="${wa(aj.whatsapp)}" target="_blank" rel="noopener">${ico("wa")} WhatsApp</a> · <a href="mailto:${esc(aj.email)}">${esc(aj.email)}</a></p></div>
+        <p class="foot-p"><a href="${wa(aj.whatsapp)}" target="_blank" rel="noopener">${ico("wa")} WhatsApp</a> · <a href="mailto:${esc(aj.email)}">${esc(aj.email)}</a></p>
+        ${Object.keys(REDES).some(k => (aj.redes || {})[k]) ? `<p class="redes">${Object.keys(REDES).filter(k => aj.redes[k]).map(k => `<a href="${esc(aj.redes[k])}" target="_blank" rel="noopener" aria-label="${k}"><svg class="ic" viewBox="0 0 24 24">${REDES[k]}</svg></a>`).join("")}</p>` : ""}</div>
       ${cat.sedes.map(s => `<div><b>${esc(s.nombre)}</b><p class="foot-p">${esc(s.direccion)}, ${esc(s.ciudad)}<br>${esc(s.telefono || "")}</p></div>`).join("")}
     </div><div class="wrap foot-b">© ${new Date().getFullYear()} ${esc(aj.nombre)} · ${LANG === "en" ? "Check-in" : "Check-in"} ${esc(aj.checkin)} · Check-out ${esc(aj.checkout)}</div></footer>
     ${opts.sinWA ? "" : `<a class="wa-f" href="${wa(aj.whatsapp, LANG === "en" ? "Hello! I'd like information about a booking." : "¡Hola! Quisiera información para una reserva.")}" target="_blank" rel="noopener" aria-label="WhatsApp">${ico("wa")}</a>`}`);
@@ -335,8 +351,9 @@ async function pdfComprobante(r, cat) {
   const { jsPDF } = window.jspdf, doc = new jsPDF({ unit: "mm", format: "a5" }), s = cat.sedes.find(x => x.id === r.sede) || {}, aj = cat.aj, W = 148;
   const col = getComputedStyle(document.documentElement).getPropertyValue("--pri").trim() || "#1f2a37";
   doc.setFillColor(col); doc.rect(0, 0, W, 30, "F");
-  doc.setTextColor(255); doc.setFont("helvetica", "bold"); doc.setFontSize(16); doc.text(aj.nombre, 10, 13);
-  doc.setFont("helvetica", "normal"); doc.setFontSize(8.5); doc.text(`${s.nombre || ""} · ${s.direccion || ""}, ${s.ciudad || ""}`, 10, 19); doc.text(`RUC ${s.ruc || "—"} · ${s.razon || ""} · Tel. ${s.telefono || ""}`, 10, 24);
+  let X = 10; if (aj.logo) { try { doc.setFillColor(255, 255, 255); doc.roundedRect(8, 5, 20, 20, 3, 3, "F"); doc.addImage(aj.logo, aj.logo.includes("image/png") ? "PNG" : "JPEG", 9, 6, 18, 18); X = 32; } catch (e) {} }
+  doc.setTextColor(255); doc.setFont("helvetica", "bold"); doc.setFontSize(16); doc.text(aj.nombre, X, 13);
+  doc.setFont("helvetica", "normal"); doc.setFontSize(8.5); doc.text(`${s.nombre || ""} · ${s.direccion || ""}, ${s.ciudad || ""}`, X, 19); doc.text(`RUC ${s.ruc || "—"} · ${s.razon || ""} · Tel. ${s.telefono || ""}`, X, 24);
   doc.setTextColor(30); doc.setFont("helvetica", "bold"); doc.setFontSize(13); doc.text(t("comprobante").toUpperCase(), 10, 41);
   doc.setFontSize(11); doc.text(`${t("codigo")}: ${r.codigo}`, 10, 48);
   const qr = await qrCanvas(linkReserva(r.codigo), 300); doc.addImage(qr.toDataURL("image/png"), "PNG", W - 44, 34, 34, 34);
@@ -346,7 +363,7 @@ async function pdfComprobante(r, cat) {
     [t("habitacion"), `${r.habNum} · ${r.habTipo}`], [t("llegada"), `${fmtF(r.llegada, true)} · ${aj.checkin}`], [t("salida"), `${fmtF(r.salida, true)} · ${aj.checkout}`],
     [t("huespedes"), `${r.adultos} ${t("adultos").toLowerCase()}${r.ninos ? ` + ${r.ninos} ${t("ninos").toLowerCase()}` : ""}`], [t("noches").replace(/^./, m => m.toUpperCase()), `${r.noches} × ${S(r.precioNoche)}${r.total !== r.noches * r.precioNoche ? ` (${t("temporada").toLowerCase()})` : ""}`]];
   let y = 58; doc.setFontSize(9.5);
-  filas.forEach(([a, b]) => { doc.setFont("helvetica", "bold"); doc.text(String(a), 10, y); doc.setFont("helvetica", "normal"); doc.text(String(b || "—"), 50, y, { maxWidth: W - 100 }); y += 6.4; });
+  filas.forEach(([a, b]) => { doc.setFont("helvetica", "bold"); doc.text(String(a), 10, y); doc.setFont("helvetica", "normal"); const lns = doc.splitTextToSize(String(b || "—"), y < 72 ? W - 100 : W - 60); doc.text(lns, 50, y); y += 6.4 + (lns.length - 1) * 4.2; });
   y += 3; doc.setDrawColor(220); doc.line(10, y, W - 10, y); y += 7;
   const pagado = +r.pagado || 0, declarado = +r.monto || 0;
   [[t("total"), S(r.total)], [r.estado === "por-validar" ? `${t("pagasAhora")} (${t("est_porvalidar").toLowerCase()})` : t("pagado"), S(r.estado === "por-validar" ? declarado : pagado)], [t("saldo"), S(Math.max(r.total - (r.estado === "por-validar" ? declarado : pagado), 0))], [t("metodo"), `${r.metodo || "—"}${r.banco ? " " + r.banco : ""}${r.operacion ? " · Op. " + r.operacion : ""}`], [t("estado"), est]]

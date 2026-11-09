@@ -280,3 +280,20 @@ body.app { background: var(--bg); padding-bottom: 84px; }
 
 .demo-bar .demo-t { background: none; border: 0; color: #f2c46d; font: 700 .74rem var(--fb); padding: 6px 8px; cursor: pointer; white-space: nowrap; }
 .demo-bar.min button:not(.demo-t) { display: none; }
+
+/* Marca: logo subido, redes, galería y tours con foto */
+.logo-img { object-fit: contain; border-radius: 10px; background: #fff; }
+.app-h .logo-img { background: #fff; padding: 2px; }
+.redes { display: flex; gap: 10px; margin-top: 12px; } .redes a { width: 36px; height: 36px; border-radius: 50%; background: rgba(255, 255, 255, .12); display: grid; place-items: center; }
+.redes .ic { width: 18px; height: 18px; }
+.hab-gal { position: absolute; right: 12px; bottom: 12px; width: 38px; height: 38px; border-radius: 50%; border: 0; background: rgba(0, 0, 0, .55); color: #fff; display: grid; place-items: center; cursor: pointer; }
+.hab-f img { cursor: default; }
+.gal { position: fixed; inset: 0; z-index: 90; background: rgba(8, 10, 14, .92); display: grid; place-items: center; padding: 50px 16px 110px; }
+.gal figure { margin: 0; display: grid; gap: 8px; justify-items: center; } .gal figure img { max-width: min(1100px, 100%); max-height: calc(100vh - 190px); border-radius: 12px; object-fit: contain; }
+.gal figcaption { color: #ddd; font-size: .88rem; }
+.gal-x, .gal-p, .gal-n { position: fixed; border: 0; background: rgba(255, 255, 255, .14); color: #fff; width: 46px; height: 46px; border-radius: 50%; cursor: pointer; font-size: 1.8rem; display: grid; place-items: center; }
+.gal-x { top: 12px; right: 12px; } .gal-p { left: 12px; top: 50%; } .gal-n { right: 12px; top: 50%; }
+.gal-t { position: fixed; bottom: 16px; left: 0; right: 0; display: flex; justify-content: center; gap: 8px; padding: 0 16px; overflow-x: auto; }
+.gal-t button { width: 64px; height: 48px; padding: 0; border: 2px solid transparent; border-radius: 8px; overflow: hidden; background: none; cursor: pointer; flex: none; opacity: .6; } .gal-t button.on { border-color: #fff; opacity: 1; }
+.gal-t img { width: 100%; height: 100%; object-fit: cover; }
+.tour-f { width: 100%; aspect-ratio: 16/9; object-fit: cover; border-radius: calc(var(--r) - 6px); }

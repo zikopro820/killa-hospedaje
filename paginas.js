@@ -2,7 +2,7 @@
    KILLA HOSPEDAJE — Páginas
    ========================================================= */
 const habCard = (h, s, cat, extra = "") => `<article class="hab">
-  <div class="hab-f">${foto((h.fotos || [])[0], L(h, "tipo"), 700)}<span class="hab-sede">${esc(s ? s.nombre : "")}</span></div>
+  <div class="hab-f">${foto((h.fotos || [])[0], L(h, "tipo"), 700)}<button class="hab-gal" data-gal="${esc(h.id)}" aria-label="${LANG === "en" ? "See photos" : "Ver fotos"}">${ico("camera")}</button><span class="hab-sede">${esc(s ? s.nombre : "")}</span></div>
   <div class="hab-b"><h3>${esc(L(h, "tipo"))}</h3>
     <p class="hab-m">${ico("users")} ${t("hasta")} ${h.cap} ${t("personas")} · ${ico("bed")} ${esc(L(h, "camas"))}</p>
     <ul class="amen">${(h.amen || []).slice(0, 5).map(a => `<li>${ico(a)}${esc(amenTxt(a))}</li>`).join("")}</ul>
@@ -24,9 +24,9 @@ async function pgInicio(cat) {
   aplicarTema(tema); layout(cat);
   const prods = (await DB.productos((sp || cat.sedes.find(s => temaDe(s) === tema) || cat.sedes[0] || {}).id)).slice(0, 4);
   $("#main").innerHTML = `
-  <section class="hero"><div class="hero-bg">${foto(T0.foto, "", 1800)}</div><div class="wrap hero-in">
+  <section class="hero"><div class="hero-bg">${foto((una ? sp.foto : cat.aj.portadaFoto) || T0.foto, "", 1800)}</div><div class="wrap hero-in">
     <span class="eyebrow">${ico(T0.ic)} ${esc(una ? sp.nombre + " · " + sp.ciudad : cat.sedes.map(s => s.ciudad).join(" · "))}</span>
-    <h1>${TX(T0.h1)}</h1><p class="lead">${TX(T0.sub)}</p>${barraBusqueda(cat, sp && sp.id)}</div></section>
+    <h1>${esc(L(una ? sp : cat.aj, una ? "heroTit" : "portadaTit")) || TX(T0.h1)}</h1><p class="lead">${esc(L(una ? sp : cat.aj, una ? "heroSub" : "portadaSub")) || TX(T0.sub)}</p>${barraBusqueda(cat, sp && sp.id)}</div></section>
   ${!una ? `<section class="sec"><div class="wrap"><div class="sec-h"><h2>${t("nuestrosHoteles")}</h2></div>
     <div class="sedes">${cat.sedes.map(s => { const tm = temaDe(s); return `<a class="sede tm-${tm}" href="habitaciones?sede=${esc(s.id)}">
       <div class="sede-f">${foto(s.foto || TEMAS[tm].foto, s.nombre, 800)}<span class="sede-t">${ico(TEMAS[tm].ic)} ${TX(TEMAS[tm].n)}</span></div>
@@ -35,8 +35,9 @@ async function pgInicio(cat) {
   <section class="sec sec-alt"><div class="wrap"><div class="sec-h"><h2>${t("habitaciones")}</h2><a class="lnk" href="habitaciones">${t("verHab")} ${ico("arrow")}</a></div>
     <div class="habs">${(una ? cat.habs.filter(h => h.sede === sp.id) : cat.sedes.map(s => cat.habs.find(h => h.sede === s.id)).filter(Boolean).concat(cat.habs)).filter((h, i, a) => a.indexOf(h) === i).slice(0, 6).map(h => habCard(h, cat.sedes.find(s => s.id === h.sede), cat)).join("")}</div></div></section>
   <section class="sec"><div class="wrap"><div class="sec-h"><h2>${t("servicios")}</h2></div>
-    <div class="servs">${T0.serv.map(([i, es, en]) => `<div class="serv">${ico(i)}<span>${LANG === "en" ? en : es}</span></div>`).join("")}</div></div></section>
-  <section class="sec qr-sec"><div class="wrap qr-g"><div class="qr-mock" aria-hidden="true"><div class="phone"><div class="ph-top">${LOGO}<b>${t("bienvenido", { n: "204" })}</b></div>
+    <div class="servs">${((sp || cat.sedes.find(s => temaDe(s) === tema) || {}).servicios || []).length ? (sp || cat.sedes.find(s => temaDe(s) === tema)).servicios.map(x => `<div class="serv">${ico(x.ic || "check")}<span>${esc(LANG === "en" && x.en ? x.en : x.es)}</span></div>`).join("")
+      : T0.serv.map(([i, es, en]) => `<div class="serv">${ico(i)}<span>${LANG === "en" ? en : es}</span></div>`).join("")}</div></div></section>
+  <section class="sec qr-sec"><div class="wrap qr-g"><div class="qr-mock" aria-hidden="true"><div class="phone"><div class="ph-top">${LOGO()}<b>${t("bienvenido", { n: "204" })}</b></div>
       <div class="ph-w">${ico("wifi")}<span><small>${t("wifi")}</small><b>killa2026</b></span></div><div class="ph-g">${["bag", "broom", "compass", "map"].map(i => `<span>${ico(i)}</span>`).join("")}</div></div><div class="qr-card">${ico("qr")}</div></div>
     <div><span class="eyebrow">${ico("qr")} QR</span><h2>${t("qrTit")}</h2><p class="lead">${t("qrTxt")}</p>
       <ul class="ticks">${["qr1", "qr2", "qr3", "qr4"].map(k => `<li>${ico("check")} ${t(k)}</li>`).join("")}</ul></div></div></section>
@@ -179,7 +180,7 @@ async function pgReservar(cat) {
 async function tarjetaReserva(r, cat) {
   const s = cat.sedes.find(x => x.id === r.sede) || {}, aj = cat.aj, est = String(r.estado || "por-validar"), pag = est === "por-validar" ? +r.monto || 0 : +r.pagado || 0;
   const qr = await qrCanvas(linkReserva(r.codigo), 200);
-  return `<article class="vou" id="vou"><header class="vou-h">${LOGO}<div><b>${esc(aj.nombre)}</b><small>${esc(s.nombre || "")} · ${esc(s.direccion || "")}, ${esc(s.ciudad || "")}</small></div><span class="est est-${esc(est)}">${t("est_" + est.replace("-", ""))}</span></header>
+  return `<article class="vou" id="vou"><header class="vou-h">${LOGO()}<div><b>${esc(aj.nombre)}</b><small>${esc(s.nombre || "")} · ${esc(s.direccion || "")}, ${esc(s.ciudad || "")}</small></div><span class="est est-${esc(est)}">${t("est_" + est.replace("-", ""))}</span></header>
     <div class="vou-b"><div class="vou-qr"><img src="${qr.toDataURL()}" alt="QR ${esc(r.codigo)}"><b>${esc(r.codigo)}</b><small>${t("muestraLlegar")}</small></div>
       <dl class="vou-d"><div><dt>${t("huesped")}</dt><dd>${esc(r.nombre)}<small>${esc(r.docTipo)} ${esc(r.docNum)}</small></dd></div>
         <div><dt>${t("habitacion")}</dt><dd>N.° ${esc(r.habNum)}<small>${esc(r.habTipo)}</small></dd></div>
@@ -277,11 +278,11 @@ async function pgHabitacion(cat) {
   const key = PARAMS.get("k") || "", q = await DB.qr(key).catch(() => null);
   const s = q && cat.sedes.find(x => x.id === q.sede), h = q && cat.habs.find(x => x.id === q.hab);
   aplicarTema(temaDe(s)); document.documentElement.lang = LANG;
-  if (!q || !s) { document.body.innerHTML = `<main class="qr-err">${LOGO}<h1>${esc(cat.aj.nombre)}</h1><p>${t("qrInvalido")}</p><a class="btn btn-pri" href="./">${t("inicio")}</a></main>`; return; }
+  if (!q || !s) { document.body.innerHTML = `<main class="qr-err">${LOGO()}<h1>${esc(cat.aj.nombre)}</h1><p>${t("qrInvalido")}</p><a class="btn btn-pri" href="./">${t("inicio")}</a></main>`; return; }
   const num = q.num || (h && h.num) || "", aj = cat.aj, waR = s.whatsapp || aj.whatsapp, misKey = "kh_ped_" + key;
   document.title = `${t("habitacion")} ${num} · ${s.nombre}`;
   document.body.classList.add("app");
-  document.body.innerHTML = `<header class="app-h">${LOGO}<div><b>${esc(s.nombre)}</b><small>${t("habitacion")} ${esc(num)}</small></div>
+  document.body.innerHTML = `<header class="app-h">${LOGO()}<div><b>${esc(s.nombre)}</b><small>${t("habitacion")} ${esc(num)}</small></div>
     <button class="lang" id="langBtn">${ico("globe")}<span>${LANG === "es" ? "EN" : "ES"}</span></button></header>
     <main id="main" class="app-m"></main>
     <nav class="app-n" aria-label="Menú">${[["inicio", "home", t("tabInicio")], ["tienda", "bag", t("tabTienda")], ["serv", "bell", t("tabServ")], ["tours", "compass", t("tabTours")], ["cerca", "map", t("tabCerca")]].map(([k, i, n]) => `<button data-tab="${k}">${ico(i)}<span>${n}</span></button>`).join("")}</nav>`;
@@ -354,7 +355,7 @@ async function pgHabitacion(cat) {
     },
     async tours() {
       const l = s.tours || [];
-      M.innerHTML = `<h1 class="app-t">${t("tabTours")}</h1>${l.map(x => `<section class="card tour"><div><h2>${esc(L(x, "n"))}</h2><p class="muted">${esc(x.d || "")}</p><b>${S(x.precio)} <small>/ ${LANG === "en" ? "person" : "persona"}</small></b></div>
+      M.innerHTML = `<h1 class="app-t">${t("tabTours")}</h1>${l.map(x => `<section class="card tour">${x.foto ? `<img class="tour-f" src="${esc(x.foto)}" alt="" loading="lazy">` : ""}<div><h2>${esc(L(x, "n"))}</h2><p class="muted">${esc(x.d || "")}</p><b>${S(x.precio)} <small>/ ${LANG === "en" ? "person" : "persona"}</small></b></div>
         <form data-tour="${esc(x.id)}"><div class="f-g"><label class="fld"><span>${t("fecha")}</span><input type="date" name="f" min="${hoyISO()}" value="${addD(hoyISO(), 1)}" required></label><label class="fld"><span>${t("personas")}</span><select name="n">${[1, 2, 3, 4, 5, 6].map(n => `<option>${n}</option>`).join("")}</select></label></div>
         ${metodoPago(x.id)}${pinBox()}<button class="btn btn-pri btn-sm">${t("pedirTour")}</button></form></section>`).join("") || `<p class="muted">—</p>`}`;
       $$(".pin-f", M).forEach(x => x.hidden = false);
@@ -375,6 +376,22 @@ async function pgHabitacion(cat) {
   if (DEMO) demoBar();
   ir("inicio");
 }
+
+/* ================= Galería de fotos de habitación ================= */
+document.addEventListener("click", async e => {
+  const b = e.target.closest("[data-gal]"); if (!b) return; e.preventDefault();
+  const h = (CAT.habs || []).find(x => x.id === b.dataset.gal); if (!h) return;
+  const l = [...(h.fotos || []), ...(await DB.galeria(h.id))].filter(Boolean).map(f => String(f).startsWith("data:") || String(f).startsWith("http") ? f : IMG(f, 1400));
+  if (!l.length) return;
+  let i = 0; const g = document.createElement("div"); g.className = "gal"; g.setAttribute("role", "dialog"); g.setAttribute("aria-modal", "true");
+  const pint = () => g.innerHTML = `<button class="gal-x" aria-label="Cerrar">${ico("x")}</button><figure><img src="${esc(l[i])}" alt="${esc(L(h, "tipo"))} ${i + 1}"><figcaption>${esc(L(h, "tipo"))} · ${i + 1}/${l.length}</figcaption></figure>
+    ${l.length > 1 ? `<button class="gal-p" aria-label="Anterior">‹</button><button class="gal-n" aria-label="Siguiente">›</button><div class="gal-t">${l.map((f, k) => `<button data-k="${k}" class="${k === i ? "on" : ""}"><img src="${esc(f)}" alt=""></button>`).join("")}</div>` : ""}`;
+  pint(); document.body.appendChild(g); document.body.style.overflow = "hidden";
+  const cerrar = () => { g.remove(); document.body.style.overflow = ""; document.removeEventListener("keydown", kd); };
+  const kd = ev => { if (ev.key === "Escape") cerrar(); if (ev.key === "ArrowRight") { i = (i + 1) % l.length; pint(); } if (ev.key === "ArrowLeft") { i = (i - 1 + l.length) % l.length; pint(); } };
+  document.addEventListener("keydown", kd);
+  g.addEventListener("click", ev => { if (ev.target === g || ev.target.closest(".gal-x")) return cerrar(); if (ev.target.closest(".gal-n")) { i = (i + 1) % l.length; pint(); } if (ev.target.closest(".gal-p")) { i = (i - 1 + l.length) % l.length; pint(); } const k = ev.target.closest("[data-k]"); if (k) { i = +k.dataset.k; pint(); } });
+});
 
 /* ================= Arranque ================= */
 (async function () {
