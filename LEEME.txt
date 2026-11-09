@@ -2,11 +2,10 @@ KILLA HOSPEDAJE — WEB
 =====================
 Páginas: inicio (index), habitaciones, reservar, mi-reserva, tienda y habitacion (la que abre el QR de cada cuarto).
 
-1. Sube TODOS estos archivos a un repositorio nuevo de GitHub, por ejemplo «killa-hospedaje»,
-   y activa GitHub Pages (Settings → Pages → rama main).
-2. Mientras firebase-config.js diga "PEGA_AQUI", la web funciona en MODO DEMO:
-   - abajo a la izquierda verás «Modo demo · Estilo» para cambiar entre Ciudad, Turístico, Playa y Campo;
-   - prueba un QR de habitación:  .../killa-hospedaje/habitacion?k=demo-mir-204   (PIN de prueba: 4821)
-   - otra habitación ocupada:      .../killa-hospedaje/habitacion?k=demo-oxa-b    (PIN: 1357)
-3. Cuando tengas el proyecto de Firebase, pega los datos en firebase-config.js (igual que en Mente Serena).
-   Las reglas de seguridad vienen en el panel (siguiente entrega).
+1. Sube TODOS estos archivos al repositorio «killa-hospedaje» y activa GitHub Pages.
+2. firebase-config.js ya tiene tu proyecto hospedaje-e2658. Los pasos de reglas y usuarios
+   están en COMO-CONFIGURAR.txt del panel.
+3. Hasta que pulses «Cargar ejemplos» en el panel, la web muestra el contenido de ejemplo de datos.js.
+4. ¿Quieres volver al MODO DEMO para enseñarlo a un cliente sin tocar tu Firebase?
+   Pon apiKey: "PEGA_AQUI". Ahí aparece abajo el botón «Modo demo · Estilo» y puedes probar
+   .../habitacion?k=demo-mir-204 (PIN 4821).

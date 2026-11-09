@@ -6,10 +6,10 @@
    (las reservas se guardan solo en este navegador).
    ========================================================= */
 window.FIREBASE_CONFIG = {
-  apiKey: "PEGA_AQUI",
-  authDomain: "",
-  projectId: "",
-  storageBucket: "",
-  messagingSenderId: "",
-  appId: ""
+  apiKey: "AIzaSyCgYEpPgeIwRV4dqXnap3TJzl0fLVP1NS8",
+  authDomain: "hospedaje-e2658.firebaseapp.com",
+  projectId: "hospedaje-e2658",
+  storageBucket: "hospedaje-e2658.firebasestorage.app",
+  messagingSenderId: "57180906382",
+  appId: "1:57180906382:web:ac4f12d2a338727c4c7adf"
 };

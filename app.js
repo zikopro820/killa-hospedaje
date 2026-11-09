@@ -248,7 +248,6 @@ const DB = {
     if (DEMO) {
       const d = LDB.get();
       if (p.pago === "habitacion") { const pin = d.pines[p.qr]; if (!pin || String(pin.pin) !== String(p.pin)) throw Object.assign(new Error("pin"), { code: "pin" }); }
-      if (p.items) for (const it of p.items) { const pr = d.productos[it.id]; if (pr && pr.stock != null) pr.stock = Math.max(0, pr.stock - it.cant); }
       d.pedidos[id] = p; LDB.save(d); return id;
     }
     const { fs, db } = await fb();
