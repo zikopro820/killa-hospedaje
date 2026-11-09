@@ -117,7 +117,7 @@ p { margin: 0 0 .8em; }
 
 .prods { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 14px; }
 .prod { background: var(--card); border: 1px solid var(--line); border-radius: var(--r); padding: 16px; display: flex; flex-direction: column; gap: 6px; }
-.prod-e { font-size: 2.2rem; line-height: 1; } .prod b { font-size: .95rem; line-height: 1.3; } .prod-p { color: var(--pri); font-weight: 700; } .prod .btn { margin-top: auto; }
+.prod-f { display: grid; place-items: center; aspect-ratio: 1; border-radius: calc(var(--r) - 6px); overflow: hidden; background: var(--bg2); margin: -4px -4px 4px; } .prod-f img { width: 100%; height: 100%; object-fit: cover; } .prod-e { font-size: 2.6rem; line-height: 1; } .prod b { font-size: .95rem; line-height: 1.3; } .prod-p { color: var(--pri); font-weight: 700; } .prod .btn { margin-top: auto; }
 .prod.off { opacity: .55; }
 .prods.sm { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; } .prods.sm .prod { padding: 12px; }
 

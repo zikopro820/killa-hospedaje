@@ -191,26 +191,38 @@ const LDB = {
   save(d) { store.set("kh_db", d); }
 };
 const arr = o => Object.entries(o || {}).map(([id, v]) => ({ ...v, id: v.id || id }));
-let CAT = null;
+let CAT = null; const PRODS = {};
 const DB = {
   async catalogo() {
     if (CAT) return CAT;
     const D = window.KH_DATOS;
-    if (DEMO) { const d = LDB.get(); CAT = { aj: { ...D.ajustes, ...(d.ajustes.general || {}) }, sedes: arr(d.sedes).sort((a, b) => (a.orden ?? 0) - (b.orden ?? 0)), habs: arr(d.habitaciones), prods: arr(d.productos) }; }
+    if (DEMO) { const d = LDB.get(); CAT = { aj: { ...D.ajustes, ...(d.ajustes.general || {}) }, sedes: arr(d.sedes).sort((a, b) => (a.orden ?? 0) - (b.orden ?? 0)), habs: arr(d.habitaciones) }; }
     else {
       let c = null; try { c = JSON.parse(sessionStorage.getItem("kh_cat")); } catch (e) {}
-      if (c && c.v === 1 && Date.now() - c.t < 120000) CAT = c.d;
+      if (c && c.v === 2 && Date.now() - c.t < 120000) CAT = c.d;
       else {
         try {
           const { fs, db } = await fb(), g = async n => (await fs.getDocs(fs.collection(db, n))).docs.map(x => ({ ...x.data(), id: x.id }));
-          const [aj, sedes, habs, prods] = await Promise.all([fs.getDoc(fs.doc(db, "ajustes", "general")).then(x => x.exists() ? x.data() : {}), g("sedes"), g("habitaciones"), g("productos")]);
-          CAT = { aj: { ...D.ajustes, ...aj }, sedes: (sedes.length ? sedes : D.sedes).sort((a, b) => (a.orden ?? 0) - (b.orden ?? 0)), habs: habs.length ? habs : D.habitaciones, prods: prods.length ? prods : D.productos };
-          sessionStorage.setItem("kh_cat", JSON.stringify({ v: 1, t: Date.now(), d: CAT }));
-        } catch (e) { console.warn("Firebase:", e.message); CAT = { aj: D.ajustes, sedes: D.sedes, habs: D.habitaciones, prods: D.productos }; }
+          const [aj, sedes, habs] = await Promise.all([fs.getDoc(fs.doc(db, "ajustes", "general")).then(x => x.exists() ? x.data() : {}), g("sedes"), g("habitaciones")]);
+          CAT = { aj: { ...D.ajustes, ...aj }, sedes: (sedes.length ? sedes : D.sedes).sort((a, b) => (a.orden ?? 0) - (b.orden ?? 0)), habs: habs.length ? habs : D.habitaciones };
+          sessionStorage.setItem("kh_cat", JSON.stringify({ v: 2, t: Date.now(), d: CAT }));
+        } catch (e) { console.warn("Firebase:", e.message); CAT = { aj: D.ajustes, sedes: D.sedes, habs: D.habitaciones }; }
       }
     }
-    CAT.sedes = CAT.sedes.filter(s => s.activa !== false); CAT.habs = CAT.habs.filter(h => h.activa !== false); CAT.prods = CAT.prods.filter(p => p.activo !== false);
+    CAT.sedes = CAT.sedes.filter(s => s.activa !== false); CAT.habs = CAT.habs.filter(h => h.activa !== false);
     return CAT;
+  },
+  async productos(sede) {   // cada sede tiene sus propios productos (con su foto y su stock)
+    if (PRODS[sede]) return PRODS[sede];
+    const tipo = (CAT && CAT.sedes.find(s => s.id === sede) || {}).tipo, deTipo = p => !p.tipos || !tipo || p.tipos.includes(tipo);
+    let l = [];
+    if (DEMO) l = arr(LDB.get().productos).filter(p => p.sede === sede || ((p.sede === "todas" || !p.sede) && deTipo(p)));
+    else {
+      try { const { fs, db } = await fb(); l = (await fs.getDocs(fs.query(fs.collection(db, "productos"), fs.where("sede", "in", [sede, "todas"])))).docs.map(x => ({ ...x.data(), id: x.id })).filter(p => p.sede === sede || deTipo(p)); }
+      catch (e) { console.warn("productos:", e.message); }
+      if (!l.length) { try { const { fs, db } = await fb(); if ((await fs.getDocs(fs.query(fs.collection(db, "productos"), fs.limit(1)))).empty) l = window.KH_DATOS.productos.filter(deTipo); } catch (e) {} }   // tienda aún vacía en Firebase: ejemplos
+    }
+    return PRODS[sede] = l.filter(p => p.activo !== false).sort((a, b) => String(a.cat).localeCompare(b.cat) || String(a.n).localeCompare(b.n));
   },
   async ocupacion(desde, hasta) {   // noches ocupadas entre [desde, hasta)
     if (DEMO) return arr(LDB.get().ocupacion).filter(o => o.fecha >= desde && o.fecha < hasta);

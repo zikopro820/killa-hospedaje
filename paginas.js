@@ -22,7 +22,7 @@ function enlazarFechas(form) {
 async function pgInicio(cat) {
   const una = cat.sedes.length === 1, sp = una ? cat.sedes[0] : null, tema = una ? temaDe(sp) : (temaForzado() || cat.aj.temaPrincipal || "turistico"), T0 = TEMAS[tema];
   aplicarTema(tema); layout(cat);
-  const prods = cat.prods.filter(p => !p.tipos || p.tipos.includes(tema)).slice(0, 4);
+  const prods = (await DB.productos((sp || cat.sedes.find(s => temaDe(s) === tema) || cat.sedes[0] || {}).id)).slice(0, 4);
   $("#main").innerHTML = `
   <section class="hero"><div class="hero-bg">${foto(T0.foto, "", 1800)}</div><div class="wrap hero-in">
     <span class="eyebrow">${ico(T0.ic)} ${esc(una ? sp.nombre + " · " + sp.ciudad : cat.sedes.map(s => s.ciudad).join(" · "))}</span>
@@ -41,7 +41,7 @@ async function pgInicio(cat) {
     <div><span class="eyebrow">${ico("qr")} QR</span><h2>${t("qrTit")}</h2><p class="lead">${t("qrTxt")}</p>
       <ul class="ticks">${["qr1", "qr2", "qr3", "qr4"].map(k => `<li>${ico("check")} ${t(k)}</li>`).join("")}</ul></div></div></section>
   <section class="sec sec-alt"><div class="wrap"><div class="sec-h"><div><h2>${t("tiendaTit")}</h2><p class="muted">${t("tiendaTxt")}</p></div><a class="btn btn-light" href="tienda">${t("verTienda")} ${ico("arrow")}</a></div>
-    <div class="prods">${prods.map(p => `<div class="prod"><span class="prod-e">${esc(p.e || "🛍️")}</span><b>${esc(L(p, "n"))}</b><span class="prod-p">${S(p.precio)}</span></div>`).join("")}</div></div></section>
+    <div class="prods">${prods.map(p => `<div class="prod">${prodImg(p)}<b>${esc(L(p, "n"))}</b><span class="prod-p">${S(p.precio)}</span></div>`).join("")}</div></div></section>
   <section class="sec"><div class="wrap"><div class="sec-h"><h2>${t("ubicacion")}</h2></div>
     <div class="ubis">${cat.sedes.map(s => `<div class="ubi"><h3>${esc(s.nombre)}</h3><p>${ico("pin")} ${esc(s.direccion)}, ${esc(s.ciudad)}</p><p>${ico("phone")} ${esc(s.telefono || "")}</p>
       <div class="ubi-a"><a class="btn btn-light btn-sm" target="_blank" rel="noopener" href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(s.direccion + ", " + s.ciudad + ", Perú")}">${ico("map")} ${t("comoLlegar")}</a>
@@ -229,8 +229,8 @@ function carritoUI(box, lista, onChange) {
   pintar();
   return { add, total, items: () => Object.values(C).filter(x => x.c > 0).map(x => ({ id: x.p.id, n: x.p.n, precio: +x.p.precio, cant: x.c })), vaciar() { for (const k in C) delete C[k]; pintar(); }, cantidad: () => Object.values(C).reduce((a, x) => a + x.c, 0) };
 }
-const prodsDe = (cat, sedeId) => { const s = cat.sedes.find(x => x.id === sedeId), tm = s ? temaDe(s) : null; return cat.prods.filter(p => (p.sede === "todas" || !p.sede || p.sede === sedeId) && (!p.tipos || !tm || p.tipos.includes(tm))); };
-const gridProds = (l, cat) => l.map(p => { const ag = p.stock != null && +p.stock <= 0; return `<div class="prod ${ag ? "off" : ""}"><span class="prod-e">${esc(p.e || "🛍️")}</span><b>${esc(L(p, "n"))}</b><span class="prod-p">${S(p.precio)}</span>
+const prodImg = p => p.foto ? `<span class="prod-f"><img src="${esc(p.foto)}" alt="${esc(L(p, "n"))}" loading="lazy"></span>` : `<span class="prod-f prod-e" aria-hidden="true">${esc(p.e || "🛍️")}</span>`;
+const gridProds = (l, cat) => l.map(p => { const ag = p.stock != null && +p.stock <= 0; return `<div class="prod ${ag ? "off" : ""}">${prodImg(p)}<b>${esc(L(p, "n"))}</b><span class="prod-p">${S(p.precio)}</span>
   <button class="btn btn-light btn-sm" data-add="${esc(p.id)}" ${ag ? "disabled" : ""}>${ag ? t("agotado") : ico("plus") + " " + t("agregar")}</button></div>`; }).join("");
 async function pgTienda(cat) {
   let sede = PARAMS.get("sede") || store.get("kh_sede", cat.sedes[0]?.id), cat0 = "";
@@ -247,7 +247,7 @@ async function pgTienda(cat) {
         <label class="fld full"><span>${t("nombre")} *</span><input name="nombre" maxlength="60" required></label>
         <label class="fld full"><span>${t("celular")} *</span><input name="celular" type="tel" maxlength="20" required></label></div>
         <div id="pagoT"></div><p class="f-msg" id="tmsg" role="alert"></p><button class="btn btn-pri" style="width:100%">${t("pedir")}</button></form></aside></div></section>`;
-  const lista = () => prodsDe(cat, sede), pago = Pago($("#pagoT"), cat.aj);
+  let LP = await DB.productos(sede); const lista = () => LP, pago = Pago($("#pagoT"), cat.aj);
   let cart = null; cart = carritoUI($("#cart"), lista, () => { const n = cart ? cart.cantidad() : 0; $("#tf").hidden = !n; if (n) pago.setMonto(cart.total()); });
   function pintar() {
     const l = lista(), cats = [...new Set(l.map(p => p.cat))];
@@ -257,7 +257,7 @@ async function pgTienda(cat) {
   pintar(); await pago.pintar();
   $("#cats").addEventListener("click", e => { const b = e.target.closest("[data-c]"); if (b) { cat0 = b.dataset.c; pintar(); } });
   $("#grid").addEventListener("click", e => { const b = e.target.closest("[data-add]"); if (b) { cart.add(b.dataset.add, 1); toast("✓ " + t("agregar")); } });
-  $("#tSede")?.addEventListener("change", e => { sede = e.target.value; store.set("kh_sede", sede); cart.vaciar(); cat0 = ""; aplicarTema(temaDe(cat.sedes.find(s => s.id === sede))); pintar(); });
+  $("#tSede")?.addEventListener("change", async e => { sede = e.target.value; store.set("kh_sede", sede); LP = await DB.productos(sede); cart.vaciar(); cat0 = ""; aplicarTema(temaDe(cat.sedes.find(s => s.id === sede))); pintar(); });
   $("#tf").addEventListener("change", e => { if (e.target.name === "entrega") $("#fHab").hidden = e.target.value !== "habitacion"; });
   $("#tf").addEventListener("submit", async e => {
     e.preventDefault(); const F = e.currentTarget, v = n => ($(`[name=${n}]`, F).value || "").trim(), m = $("#tmsg");
@@ -316,7 +316,7 @@ async function pgHabitacion(cat) {
         $("#encOk").innerHTML = st >= 4 && s.resena ? `<p>${t("dejaResena")}</p><a class="btn btn-light btn-sm" target="_blank" rel="noopener" href="${esc(s.resena)}">${ico("star")} Google</a>` : `<p>${t("gracias")}</p>`; });
     },
     async tienda() {
-      const lista = () => prodsDe(cat, s.id);
+      const LP = await DB.productos(s.id), lista = () => LP;
       M.innerHTML = `<h1 class="app-t">${t("tabTienda")}</h1><div class="prods prods-g sm" id="grid">${gridProds(lista(), cat)}</div>
         <section class="card cart" id="cartC"><h2>${ico("cart")} ${t("carrito")}</h2><div id="cart"></div><div id="cartF" hidden>${metodoPago("T")}${pinBox()}<p class="f-msg" id="tmsg"></p><button class="btn btn-pri" id="tBtn" style="width:100%">${t("pedir")}</button></div></section>`;
       cart.ui = carritoUI($("#cart"), lista, () => { $("#cartF").hidden = !cart.ui || !cart.ui.cantidad(); });
